@@ -1,37 +1,35 @@
-# Running the Project
+Running the Project
 
-## Requirements
+Requirements
 
 Before running the project, make sure the following tools are installed:
 
-- C++ compiler (G++ recommended)
-- Git
-- Terminal / Command Prompt
+
+C++ compiler (G++ recommended)
+Git
+Terminal / Command Prompt
+
 
 The project was developed and tested using:
-
 
 C++17
 G++ Compiler
 Windows/Linux Environment
 
 
----
-
-# Step 1: Clone the Repository
+Step 1: Clone the Repository
 
 Clone the GitHub repository:
 
-```bash
-git clone <repository_url>
+bashgit clone https://github.com/Bavadharani-R/Birch-Implementation.git
 
 Move into the project directory:
 
-cd BIRCH_Project
+bashcd Birch-Implementation
 
 The project directory should contain:
 
-BIRCH_Project
+Birch-Implementation
 │
 ├── main.cpp
 ├── CF.cpp
@@ -42,6 +40,8 @@ BIRCH_Project
 ├── CFTree.h
 ├── Dataset.cpp
 ├── Dataset.h
+├── OutlierDetector.cpp
+├── OutlierDetector.h
 ├── Phase2.cpp
 ├── Phase2.h
 ├── Phase3.cpp
@@ -50,253 +50,249 @@ BIRCH_Project
 ├── GlobalClustering.h
 ├── Output.cpp
 ├── Output.h
+├── Metrics.cpp
+├── Metrics.h
 │
-└── two_emitter_pdw_dataset.csv
+├── two_emitter_pdw_dataset.csv
+└── two_emitter_pdw_labeled.csv
+
+
 Step 2: Dataset Placement
 
-Place the input dataset file inside the project folder:
+Place both dataset files inside the project folder:
 
-two_emitter_pdw_dataset.csv
 
-The program reads this file during execution.
+two_emitter_pdw_dataset.csv — raw input data (read by the program)
+two_emitter_pdw_labeled.csv — ground truth reference file, used for comparison and metrics
+
 
 The dataset contains five input features:
+
 
 TOA_ns
 Freq_MHz
 PW_ns
 Az_deg
 El_deg
+
+
+The ground truth file additionally contains a Ground_Truth column with values Emitter_1, Emitter_2, or Noise.
+
+
 Step 3: Compile the Program
 
 Compile all C++ source files together:
 
-g++ main.cpp CF.cpp CFNode.cpp CFTree.cpp Dataset.cpp Phase2.cpp Phase3.cpp GlobalClustering.cpp Output.cpp -o birch
+bashg++ main.cpp CF.cpp CFNode.cpp CFTree.cpp Dataset.cpp OutlierDetector.cpp Phase2.cpp Phase3.cpp GlobalClustering.cpp Output.cpp Metrics.cpp -o birch
 
 If compilation is successful, an executable file will be generated:
 
+Windows: birch.exe
+Linux: birch
+
+
+Step 4: Run the Program
+
 Windows:
 
-birch.exe
+bashbirch.exe
 
-Linux:
+Linux / macOS:
 
-birch
-Step 4: Run the Program
-Windows
+bash./birch
 
-Run:
 
-birch.exe
-Linux / macOS
-
-Run:
-
-./birch
 Step 5: Execution Flow
 
-When the program starts, the following operations are performed automatically:
-
 Input CSV Dataset
-        |
         |
         v
 Dataset Loading
         |
-        |
         v
 Feature Normalization
         |
+        v
+Outlier Detection (LOF)
         |
         v
-Phase 1:
-CF Tree Construction
+Noise Points Set Aside
         |
+        v
+Phase 1: CF Tree Construction (clean points only)
         |
         v
 Incremental Point Insertion
         |
-        |
         v
 CF Merge / New CF Creation
-        |
         |
         v
 Node Overflow Detection
         |
-        |
         v
 CF Tree Splitting
         |
-        |
         v
-Phase 2:
-CF Tree Condensation
-        |
+Phase 2: CF Tree Condensation
         |
         v
 Removal of Small Micro Clusters
         |
-        |
         v
-Phase 3:
-Global Clustering
-        |
+Phase 3: Global Clustering
         |
         v
 Final Cluster Assignment
         |
+        v
+Map Clusters to Emitter Names
+        |
+        v
+Merge Noise Points Back as "Noise"
+        |
+        v
+Compare with Ground Truth
         |
         v
 Result CSV Generation
+        |
+        v
+Validation Metrics (Outlier / Clustering / Combined)
+
+
 Step 6: Configuration Parameters
 
-The main BIRCH parameters can be modified in:
+The main BIRCH parameters can be modified in main.cpp:
 
-main.cpp
-
-Current configuration:
-
-double threshold = 0.5;
-
+cppdouble threshold = 0.5;
 int branchingFactor = 5;
-Threshold
 
-Controls the maximum distance allowed for merging a new point into an existing CF.
+Threshold — controls the maximum distance allowed for merging a new point into an existing CF.
+If distance <= threshold, the point is merged; otherwise a new CF is created.
 
-Example:
+Branching Factor — controls the maximum number of CF entries stored in one node.
+When the node exceeds this limit, a node overflow is detected and the node is split.
 
-Distance <= Threshold
+The outlier detection parameters can also be modified in main.cpp:
 
-Point is merged
+cppint kNeighbors = 10;
+double lofThreshold = 1.5;
 
-Otherwise:
+kNeighbors — number of neighbors used by LOF to estimate local density.
+lofThreshold — LOF score above which a point is flagged as noise.
 
-New CF is created
-Branching Factor
-
-Controls the maximum number of CF entries stored in one node.
-
-Example:
-
-Branching Factor = 5
-
-When the node contains more than 5 CF entries:
-
-Node Overflow detected
-
-and the node is split.
 
 Step 7: Program Output
 
 During execution, the terminal displays:
 
+Outlier Detection Output
+
+Total points: 1900
+Noise points removed: 89
+Clean points remaining: 1811
+
 Phase 1 Output
 
-Example:
-
 Distance = 0.0417
-
 Merged into existing CF
 
-or:
+or
 
 Distance = 0.5339
-
 Created new CF
 
-When the node exceeds capacity:
+On overflow:
 
 Node Overflow detected
-
 Splitting root node...
+
 Phase 2 Output
 
-Small micro clusters are removed.
-
-Example:
-
 Removing small CF N=1
-
 Phase 2 Remaining CFs = 2
+
 Phase 3 Output
 
-Final cluster assignment:
-
-Example:
-
 Micro Cluster 0 belongs to Cluster 0
-
 Micro Cluster 1 belongs to Cluster 1
+
+Validation Metrics Output
+
+===== OUTLIER DETECTION METRICS (LOF) =====
+Precision = 0.82
+Recall = 0.73
+F1-Score = 0.77
+
+===== CLUSTERING METRICS (BIRCH only, Emitter_1 vs Emitter_2) =====
+Clustering Accuracy = 0.991
+
+===== COMBINED PIPELINE METRICS (Outlier + Clustering) =====
+Overall Accuracy = 0.977
+
+
 Step 8: Generated Output File
 
-After successful execution, the clustering results are stored in:
+After successful execution, the labeled clustering results are stored in:
 
 birch_results.csv
 
-The output contains:
+The output contains the original raw features, the ground truth label, and the predicted label:
 
-Point ID
-Cluster Label
-
-Example:
-
-Point,Cluster
-
-0,0
-1,1
-2,0
-3,1
+TOA_ns,Freq_MHz,PW_ns,Az_deg,El_deg,Ground_Truth,Predicted_Cluster
+20000,5900,4000,20.1219,7.688,Emitter_1,Emitter_1
+55000,6100,4000,-25.1808,14.8002,Emitter_2,Noise
 ...
+
+
 Troubleshooting
+
 Compilation Error
 
 Make sure all .cpp files are included during compilation:
 
-g++ main.cpp CF.cpp CFNode.cpp CFTree.cpp Dataset.cpp Phase2.cpp Phase3.cpp GlobalClustering.cpp Output.cpp -o birch
+bashg++ main.cpp CF.cpp CFNode.cpp CFTree.cpp Dataset.cpp OutlierDetector.cpp Phase2.cpp Phase3.cpp GlobalClustering.cpp Output.cpp Metrics.cpp -o birch
+
 Dataset Not Found
 
-If the program displays a file loading error, check that:
-
-two_emitter_pdw_dataset.csv
-
-is located in the same folder as the executable.
+If the program displays a file loading error, check that both
+two_emitter_pdw_dataset.csv and two_emitter_pdw_labeled.csv
+are located in the same folder as the executable.
 
 Permission Error (Linux)
 
 Give execution permission:
 
-chmod +x birch
+bashchmod +x birch
 
 Then run:
 
-./birch
-Complete BIRCH Execution Summary
+bash./birch
+
+
+Complete BIRCH + LOF Execution Summary
 
 The implementation performs:
 
-1. Load PDW dataset
 
-2. Normalize features
+Load PDW dataset
+Normalize features
+Run LOF outlier detection on all points (preprocessing, before clustering)
+Set aside noise points; pass only clean points to BIRCH
+Construct CF Tree (Phase 1)
+Incrementally insert points
+Merge points into existing CFs
+Create new CFs when threshold is exceeded
+Split overflowing CF Nodes
+Condense CF Tree (Phase 2) — remove insignificant micro clusters
+Perform global clustering (Phase 3)
+Generate final cluster labels
+Map clusters to Emitter_1 / Emitter_2 by comparing average frequency
+Re-merge noise points back into the result as "Noise"
+Compare predictions against ground truth
+Save labeled results to CSV
+Compute validation metrics: outlier detection (Precision/Recall/F1), clustering (Accuracy), and combined pipeline (Overall Accuracy)
 
-3. Construct CF Tree
 
-4. Incrementally insert points
-
-5. Merge points into existing CFs
-
-6. Create new CFs when threshold is exceeded
-
-7. Split overflowing CF Nodes
-
-8. Condense CF Tree
-
-9. Remove insignificant micro clusters
-
-10. Perform global clustering
-
-11. Generate final cluster labels
-
-12. Save results to CSV
-
-The complete BIRCH clustering pipeline can therefore be executed using a single compilation and run command.
+The complete pipeline — outlier detection, BIRCH clustering, and validation — can therefore be executed using a single compilation and run command.
